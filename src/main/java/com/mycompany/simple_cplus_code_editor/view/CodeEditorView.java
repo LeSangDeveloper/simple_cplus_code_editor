@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.simple_cplus_code_editor;
+package com.mycompany.simple_cplus_code_editor.view;
 
 import java.time.Duration;
 import java.util.Collection;

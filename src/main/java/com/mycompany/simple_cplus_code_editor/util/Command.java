@@ -4,8 +4,10 @@
  */
 package com.mycompany.simple_cplus_code_editor.util;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.lang.*;
 /**
  *
@@ -16,25 +18,29 @@ public class Command {
     public String runCommand(String... command) throws InterruptedException, IOException {
     
         var processBuilder = new ProcessBuilder().command(command); 
-        
+             
             Process process = processBuilder.start();
  
             //read the output
             InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream());
-            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(process.getOutputStream());
+            
+            StringBuilder stringb;
+        try (BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+            BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
             String output = null;
-            StringBuilder stringb = new StringBuilder();
+            stringb = new StringBuilder();
+            bufferedWriter.write("2" + "\n");
+            bufferedWriter.flush();
             while ((output = bufferedReader.readLine()) != null) {
                 System.out.println(output);
                 stringb.append(output);
                 stringb.append("\n");
             }
-
             //wait for the process to complete
             process.waitFor();
-
             //close the resources
-            bufferedReader.close();
+        }
             process.destroy();
             return stringb.toString();
     }

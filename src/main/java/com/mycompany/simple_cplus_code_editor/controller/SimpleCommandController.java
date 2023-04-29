@@ -6,6 +6,7 @@ package com.mycompany.simple_cplus_code_editor.controller;
 
 import com.mycompany.simple_cplus_code_editor.util.Command;
 import java.io.IOException;
+import javafx.concurrent.Task;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -39,10 +40,11 @@ public class SimpleCommandController {
         Text prepare = new Text(String.format("Compiling %s....", inputLocation));
         outputConsole.getChildren().add(prepare);
         try {
-            String result1 = cmd.runCommand("g++1.exe");
+            String result1 = cmd.runCommand("g++.exe");
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         } catch (IOException ex) {
+//            InputText
             Text failedCompiled = new Text("Failed! Please install MINGW or G++ compiler and add to PATH environment!!!\n\n");
             failedCompiled.setStroke(Paint.valueOf("red"));
             outputConsole.getChildren().add(failedCompiled);
@@ -75,18 +77,33 @@ public class SimpleCommandController {
     }
     
     public void runProgram(String fileLocation) {
-        String result = null;
-        Text prepare = new Text(String.format("Running %s....\n\n", fileLocation));
-        outputConsole.getChildren().add(prepare);
+//        String result = null;
+//        Text prepare = new Text(String.format("Running %s....\n\n", fileLocation));
+//        outputConsole.getChildren().add(prepare);
+//        try {
+//            Task<String> runProgramTask = new Task<>() {
+//                @Override
+//                protected String call() throws Exception {
+//                    return cmd.runCommand(fileLocation);
+//                }
+//            };
+//            result = cmd.runCommand(fileLocation);
+//        } catch (InterruptedException ex) {
+//            ex.printStackTrace();
+//        } catch (IOException ex) {
+//            ex.printStackTrace();
+//        }
+//        Text resultFinal = new Text(result);
+//        outputConsole.getChildren().add(resultFinal);
+            Runtime runTime = Runtime.getRuntime();
+
+            String executablePath = "cmd /c start \"\" " + fileLocation + " & pause";
+
         try {
-            result = cmd.runCommand(fileLocation);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
+            Process process = runTime.exec(executablePath);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-        Text resultFinal = new Text(result);
-        outputConsole.getChildren().add(resultFinal);
     }
 
     public TextFlow  getOutputConsole() {

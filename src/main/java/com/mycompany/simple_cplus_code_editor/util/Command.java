@@ -4,12 +4,8 @@
  */
 package com.mycompany.simple_cplus_code_editor.util;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.lang.*;
 /**
  *
  * @author lesan

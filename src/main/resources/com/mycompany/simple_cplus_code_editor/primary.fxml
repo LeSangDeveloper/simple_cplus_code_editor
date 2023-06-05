@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.fxmisc.richtext.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.geometry.*?>
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mycompany.simple_cplus_code_editor.controller.PrimaryController">
+   <center>
+      <VBox prefHeight="200.0" prefWidth="100.0" BorderPane.alignment="CENTER" alignment="CENTER" >
+         <children>
+             <!-- Remember to change TextArea to CodeArea -->
+            <CodeArea fx:id="codeArea" prefHeight="400.0" prefWidth="300.0" />
+            <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="600.0">
+               <content>
+                   <TextFlow fx:id="outputConsole" prefHeight="200.0" prefWidth="600.0" style="-fx-background-color: white" />
+               </content>
+            </ScrollPane>
+         </children>
+      </VBox>
+   </center>
+   <top>
+      <MenuBar BorderPane.alignment="TOP_CENTER">
+        <menus>
+          <Menu mnemonicParsing="false" text="File">
+            <items>
+              <MenuItem mnemonicParsing="false" onAction="#chooseFile" text="Open" />
+                  <MenuItem mnemonicParsing="false" onAction="#saveFile" text="Save" />
+                  <MenuItem mnemonicParsing="false" onAction="#closeFile" text="Close" />
+            </items>
+          </Menu>
+          <Menu mnemonicParsing="false" text="Program">
+            <items>
+              <MenuItem mnemonicParsing="false" onAction="#compileProgram" text="Compile" />
+                  <MenuItem mnemonicParsing="false" onAction="#runProgram" text="Run" />
+            </items>
+          </Menu>
+        </menus>
+      </MenuBar>
+   </top>
+   <bottom>
+      <HBox style="-fx-padding: 5 5 5 5;" prefHeight="18.0" prefWidth="600.0" BorderPane.alignment="BOTTOM_CENTER">
+         <children>
+            <HBox prefHeight="18.0" prefWidth="446.0" alignment="CENTER_LEFT" >
+               <children>
+                  <Label fx:id="statusMessage" prefHeight="27.0" prefWidth="236.0" text="Checking for change..." />
+                  <ProgressBar fx:id="progressBar" prefWidth="150.0" progress="0.0" />
+               </children>
+            </HBox>
+            <HBox prefHeight="27.0" prefWidth="175.0" alignment="CENTER_RIGHT">
+                <children>
+                    <Button fx:id="btnLoadChanges" onAction="#loadChanges" mnemonicParsing="false" prefHeight="39.0" prefWidth="203.0" text="Load Change" />
+                </children>
+            </HBox>
+         </children>
+      </HBox>
+   </bottom>
+</BorderPane>

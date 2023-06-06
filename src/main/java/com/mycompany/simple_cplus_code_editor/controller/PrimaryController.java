@@ -5,6 +5,7 @@
 package com.mycompany.simple_cplus_code_editor.controller;
 
 import com.mycompany.simple_cplus_code_editor.model.FileViewElement;
+import com.mycompany.simple_cplus_code_editor.model.TabCodeInfo;
 import com.mycompany.simple_cplus_code_editor.util.Command;
 import com.mycompany.simple_cplus_code_editor.util.Utils;
 import java.io.BufferedReader;
@@ -17,8 +18,10 @@ import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.concurrent.ExecutionException;
@@ -35,6 +38,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
@@ -48,6 +53,7 @@ import org.fxmisc.richtext.CodeArea;
 import org.fxmisc.richtext.LineNumberFactory;
 import org.fxmisc.richtext.model.StyleSpans;
 import org.fxmisc.richtext.model.StyleSpansBuilder;
+import org.reactfx.Subscription;
 
 /**
  * FXML Controller class
@@ -56,8 +62,6 @@ import org.fxmisc.richtext.model.StyleSpansBuilder;
  */
 public class PrimaryController implements Initializable {
 
-    @FXML
-    private CodeArea codeArea;
     @FXML
     private TextFlow outputConsole;
     @FXML
@@ -68,11 +72,16 @@ public class PrimaryController implements Initializable {
     private Button btnLoadChanges;
     @FXML
     private TreeView folderTreeView;
+    @FXML
+    private TabPane tabCodeContainer;
     
+    private CodeArea codeArea;
     private File loadedFileReference = null;
     private FileTime lastModifiedTime = null;
     private ExecutorService executor;
-    private Command cmd;
+    private final Command cmd = new Command();
+    private List<TabCodeInfo> listTabInfo = new ArrayList<>();
+    private TabCodeInfo currentTab = null;
     /**
      * Initializes the controller class.
      * @param url
@@ -82,25 +91,7 @@ public class PrimaryController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         executor = Executors.newSingleThreadExecutor();
-        cmd = new Command();
-        
         btnLoadChanges.setVisible(false);
-        codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
-        codeArea.setContextMenu( new ContextMenu() );
-        
-        codeArea.multiPlainChanges()
-                .successionEnds(Duration.ofMillis(500))
-                .retainLatestUntilLater(executor)
-                .supplyTask(this::computeHighlightingAsync)
-                .awaitLatest(codeArea.multiPlainChanges())
-                .filterMap(t -> {
-                    if(t.isSuccess()) {
-                        return Optional.of(t.get());
-                    } else {
-                        return Optional.empty();
-                    }
-                })
-                .subscribe(this::applyHighlighting);
     }    
     
     public void chooseFile(ActionEvent event) {
@@ -115,12 +106,18 @@ public class PrimaryController implements Initializable {
         File fileToLoad = fileChooser.showOpenDialog(null);
         //if file has been chosen, load it using asynchronous method (define later)
         if(fileToLoad != null){
-            loadFileToTextArea(fileToLoad, true);
+            listTabInfo.clear();
+            tabCodeContainer.getTabs().clear();
+            loadFileToTextArea(fileToLoad, true, true);
         }
     }
     
     public void closeFile(ActionEvent event) {
-        closeFile();
+//        closeFile();
+        this.listTabInfo.remove(this.currentTab);
+        this.tabCodeContainer.getTabs().remove(this.currentTab.getTab());
+        if (!this.listTabInfo.isEmpty())
+            changeTab(this.listTabInfo.get(0));
     }
     
     public void openFolder(ActionEvent event) {
@@ -129,6 +126,12 @@ public class PrimaryController implements Initializable {
         directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
         File selectedFolder = directoryChooser.showDialog(null);
         
+        listTabInfo.clear();
+        tabCodeContainer.getTabs().clear();
+        loadedFileReference = null;
+        lastModifiedTime = null;
+        codeArea = null;
+        
         if (selectedFolder != null) {
             setRootTreeView(selectedFolder);
         }
@@ -136,13 +139,23 @@ public class PrimaryController implements Initializable {
     
     public void selectItem() {
         TreeItem<FileViewElement> item = (TreeItem<FileViewElement>) folderTreeView.getSelectionModel().getSelectedItem();
+
         if (item != null) {
+            boolean isOpenNewTab = true;
+            for (TabCodeInfo info : listTabInfo) {
+            String filePath = item.getValue().getFile().getAbsolutePath();
+            if (info.getFile().getAbsolutePath().equals(filePath)) {
+                    isOpenNewTab = false;
+                    changeTab(info);
+                }
+            }
+            
             System.out.println(item.getValue());
             if (loadedFileReference != null) {
-                closeFile();
+//                closeFile();
             }
-            if (item.getValue().getFile().getName().endsWith(".cpp")) {
-                loadFileToTextArea(item.getValue().getFile(), false);
+            if (item.getValue().getFile().listFiles() == null && !item.getValue().getFile().getName().endsWith(".exe") && isOpenNewTab) {
+                loadFileToTextArea(item.getValue().getFile(), false, isOpenNewTab);
             }
         }
     }
@@ -197,17 +210,16 @@ public class PrimaryController implements Initializable {
         try {
             Process process = runTime.exec(executablePath);
         } catch (IOException ex) {
-            ex.printStackTrace();
         }
     }
     
-    private void loadFileToTextArea(File fileToLoad, boolean isResetTreeView) {
-        Task<String> loadTask = fileLoaderTask(fileToLoad, isResetTreeView);
+    private void loadFileToTextArea(File fileToLoad, boolean isResetTreeView, boolean isOpenNewTab) {
+        Task<String> loadTask = fileLoaderTask(fileToLoad, isResetTreeView, isOpenNewTab);
         progressBar.progressProperty().bind(loadTask.progressProperty());
         loadTask.run();
     }
     
-    private Task<String> fileLoaderTask(File fileToLoad, boolean isResetTreeView) {
+    private Task<String> fileLoaderTask(File fileToLoad, boolean isResetTreeView, boolean isOpenNewTab) {
         Task<String> loadFileTask = new Task<>() {
             @Override
             protected String call() throws Exception {
@@ -226,15 +238,20 @@ public class PrimaryController implements Initializable {
                 totalFile.append("\n");
                 updateProgress(++linesLoaded, lineCount);
             }
-            totalFile.deleteCharAt(totalFile.length() - 1);
+            if (totalFile.length() >= 1)
+                totalFile.deleteCharAt(totalFile.length() - 1);
             return totalFile.toString();
             }
         };
         
         loadFileTask.setOnSucceeded(workerStateEvent -> {
             try {
-                codeArea.clear();
-                codeArea.replaceText(0, 0, loadFileTask.get());
+                if (isOpenNewTab)
+                    openNewTab(fileToLoad.getName(), fileToLoad);
+//                else changeTab(fileToLoad.getAbsolutePath());
+                
+                this.codeArea.clear();
+                this.codeArea.replaceText(0, 0, loadFileTask.get());
                 statusMessage.setText("File loaded: " + fileToLoad.getName());
                 loadedFileReference = fileToLoad;
                 lastModifiedTime = Files.readAttributes(fileToLoad.toPath(), BasicFileAttributes.class).lastModifiedTime();
@@ -286,7 +303,7 @@ public class PrimaryController implements Initializable {
     }
     
     public void loadChanges(ActionEvent event) {
-        loadFileToTextArea(loadedFileReference, false);
+        loadFileToTextArea(loadedFileReference, false, false);
         btnLoadChanges.setVisible(false);
     }
     
@@ -357,16 +374,22 @@ public class PrimaryController implements Initializable {
     
     private TreeItem<FileViewElement> getItemTreeFolder(File folder) {
         URL url = PrimaryController.class.getResource("folder_icon.png");
+        URL url_cplus = PrimaryController.class.getResource("cplusplus_icon.png");
+        URL url_file = PrimaryController.class.getResource("file_icon.png");
         TreeItem<FileViewElement> result = new TreeItem<>(new FileViewElement(folder), new ImageView(new Image(url.toExternalForm())));
         File[] files = folder.listFiles();
         if (files.length > 0) {
             for (File file:files) {
-                File[] subFiles = file.listFiles();
-                if (subFiles != null && subFiles.length > 0) {
-                    TreeItem<FileViewElement> temp = getItemTreeFolder(file);
-                    result.getChildren().add(temp);
-                } else {
-                    result.getChildren().add(new TreeItem<>(new FileViewElement(file)));
+                if (!file.getName().endsWith(".exe")) {
+                    File[] subFiles = file.listFiles();
+                    if (subFiles != null && subFiles.length > 0) {
+                        TreeItem<FileViewElement> temp = getItemTreeFolder(file);
+                        result.getChildren().add(temp);
+                    } else {
+                        if (file.getName().endsWith(".cpp"))
+                            result.getChildren().add(new TreeItem<>(new FileViewElement(file), new ImageView(url_cplus.toExternalForm())));
+                        else result.getChildren().add(new TreeItem<>(new FileViewElement(file), new ImageView(url_file.toExternalForm())));
+                    }
                 }
             }
         } 
@@ -384,20 +407,83 @@ public class PrimaryController implements Initializable {
     private void setRootTreeView(File selectedFolder) {
         File[] files = selectedFolder.listFiles();
         URL url = PrimaryController.class.getResource("folder_icon.png");
+        URL url_cplus = PrimaryController.class.getResource("cplusplus_icon.png");
+        URL url_file = PrimaryController.class.getResource("file_icon.png");
         TreeItem<FileViewElement> rootItem;
 
         if (files != null) {
             rootItem = new TreeItem<>(new FileViewElement(selectedFolder), new ImageView(new Image(url.toExternalForm())));
             for (File file : files) {
-                if (file != null && file.listFiles() != null && file.listFiles().length > 0) {
-                    TreeItem itemFolder = getItemTreeFolder(file);
-                    rootItem.getChildren().add(itemFolder);
+                if (!file.getName().endsWith(".exe")) {
+                    if (file != null && file.listFiles() != null && file.listFiles().length > 0) {
+                        TreeItem itemFolder = getItemTreeFolder(file);
+                        rootItem.getChildren().add(itemFolder);
+                    }
+                    else {
+                        if (file.getName().endsWith(".cpp"))
+                            rootItem.getChildren().add(new TreeItem<>(new FileViewElement(file), new ImageView(new Image(url_cplus.toExternalForm()))));
+                        else rootItem.getChildren().add(new TreeItem<>(new FileViewElement(file), new ImageView(url_file.toExternalForm())));
+                    }
                 }
-                else rootItem.getChildren().add(new TreeItem<>(new FileViewElement(file)));
             }
         } else rootItem = new TreeItem<>(new FileViewElement(selectedFolder));
         
         folderTreeView.setRoot(rootItem);
+    }
+    
+    private void openNewTab(String tabName, File file) {
+        // TODO remove after test
+        CodeArea codeArea2 = new CodeArea();
+        Tab tab1 = new Tab(tabName, codeArea2);
+        tabCodeContainer.getTabs().add(tab1);
+        tab1.setOnSelectionChanged (e -> 
+        {
+            if (tab1.isSelected()) {
+                for(TabCodeInfo info : listTabInfo) {
+                    if (tab1.equals(info.getTab())) {
+                        changeTab(info);
+                    }
+                }
+            }
+        }
+        );
+        
+        TabCodeInfo info = new TabCodeInfo(tab1, file, codeArea2);
+        listTabInfo.add(info);
+        
+        codeArea2.setParagraphGraphicFactory(LineNumberFactory.get(codeArea2));
+        codeArea2.setContextMenu( new ContextMenu() );
+        
+        if (file.getName().endsWith(".cpp")) {
+            Subscription sub = codeArea2.multiPlainChanges()
+                .successionEnds(Duration.ofMillis(500))
+                .retainLatestUntilLater(executor)
+                .supplyTask(this::computeHighlightingAsync)
+                .awaitLatest(codeArea2.multiPlainChanges())
+                .filterMap(t -> {
+                    if(t.isSuccess()) {
+                        return Optional.of(t.get());
+                    } else {
+                        return Optional.empty();
+                    }
+                })
+                .subscribe(this::applyHighlighting);
+        }        
+        this.codeArea = codeArea2;
+        this.currentTab = info;
+        tabCodeContainer.getSelectionModel().select(tab1);
+    }
+    
+    private void changeTab(TabCodeInfo info) {
+        tabCodeContainer.getSelectionModel().select(info.getTab());
+        this.codeArea = info.getCodeArea();
+        this.loadedFileReference = info.getFile();
+        this.currentTab = info;
+        try {
+            this.lastModifiedTime = Files.readAttributes(info.getFile().toPath(), BasicFileAttributes.class).lastModifiedTime();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
     
 }

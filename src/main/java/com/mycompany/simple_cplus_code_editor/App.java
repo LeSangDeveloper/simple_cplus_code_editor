@@ -6,6 +6,7 @@ import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -40,6 +41,8 @@ public class App extends Application {
         });
         
         stage.setScene(scene);
+        stage.setTitle("Simple C++ Editor");
+        stage.getIcons().add(new Image(App.class.getResource("app_icon.png").toExternalForm()));
         stage.show();
     }
 

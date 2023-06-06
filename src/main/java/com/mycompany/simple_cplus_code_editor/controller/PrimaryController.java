@@ -4,6 +4,7 @@
  */
 package com.mycompany.simple_cplus_code_editor.controller;
 
+import com.mycompany.simple_cplus_code_editor.model.FileViewElement;
 import com.mycompany.simple_cplus_code_editor.util.Command;
 import com.mycompany.simple_cplus_code_editor.util.Utils;
 import java.io.BufferedReader;
@@ -34,9 +35,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import org.fxmisc.richtext.CodeArea;
 import org.fxmisc.richtext.LineNumberFactory;
@@ -60,6 +66,8 @@ public class PrimaryController implements Initializable {
     private ProgressBar progressBar;
     @FXML
     private Button btnLoadChanges;
+    @FXML
+    private TreeView folderTreeView;
     
     private File loadedFileReference = null;
     private FileTime lastModifiedTime = null;
@@ -107,16 +115,36 @@ public class PrimaryController implements Initializable {
         File fileToLoad = fileChooser.showOpenDialog(null);
         //if file has been chosen, load it using asynchronous method (define later)
         if(fileToLoad != null){
-            loadFileToTextArea(fileToLoad);
+            loadFileToTextArea(fileToLoad, true);
         }
     }
     
     public void closeFile(ActionEvent event) {
-        String temp = loadedFileReference.getName();
-        loadedFileReference = null;
-        lastModifiedTime = null;
-        codeArea.clear();
-        statusMessage.setText("File closed: " + temp);
+        closeFile();
+    }
+    
+    public void openFolder(ActionEvent event) {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        //only allow text files to be selected using chooser
+        directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+        File selectedFolder = directoryChooser.showDialog(null);
+        
+        if (selectedFolder != null) {
+            setRootTreeView(selectedFolder);
+        }
+    }
+    
+    public void selectItem() {
+        TreeItem<FileViewElement> item = (TreeItem<FileViewElement>) folderTreeView.getSelectionModel().getSelectedItem();
+        if (item != null) {
+            System.out.println(item.getValue());
+            if (loadedFileReference != null) {
+                closeFile();
+            }
+            if (item.getValue().getFile().getName().endsWith(".cpp")) {
+                loadFileToTextArea(item.getValue().getFile(), false);
+            }
+        }
     }
     
     public void compileProgram(ActionEvent event) {
@@ -173,13 +201,13 @@ public class PrimaryController implements Initializable {
         }
     }
     
-    private void loadFileToTextArea(File fileToLoad) {
-        Task<String> loadTask = fileLoaderTask(fileToLoad);
+    private void loadFileToTextArea(File fileToLoad, boolean isResetTreeView) {
+        Task<String> loadTask = fileLoaderTask(fileToLoad, isResetTreeView);
         progressBar.progressProperty().bind(loadTask.progressProperty());
         loadTask.run();
     }
     
-    private Task<String> fileLoaderTask(File fileToLoad) {
+    private Task<String> fileLoaderTask(File fileToLoad, boolean isResetTreeView) {
         Task<String> loadFileTask = new Task<>() {
             @Override
             protected String call() throws Exception {
@@ -210,6 +238,8 @@ public class PrimaryController implements Initializable {
                 statusMessage.setText("File loaded: " + fileToLoad.getName());
                 loadedFileReference = fileToLoad;
                 lastModifiedTime = Files.readAttributes(fileToLoad.toPath(), BasicFileAttributes.class).lastModifiedTime();
+                if (isResetTreeView)
+                    setRootTreeView(loadedFileReference);
             } catch (InterruptedException | ExecutionException | IOException e) {
 
             }
@@ -256,7 +286,7 @@ public class PrimaryController implements Initializable {
     }
     
     public void loadChanges(ActionEvent event) {
-        loadFileToTextArea(loadedFileReference);
+        loadFileToTextArea(loadedFileReference, false);
         btnLoadChanges.setVisible(false);
     }
     
@@ -323,6 +353,51 @@ public class PrimaryController implements Initializable {
         }
         spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
         return spansBuilder.create();
+    }
+    
+    private TreeItem<FileViewElement> getItemTreeFolder(File folder) {
+        URL url = PrimaryController.class.getResource("folder_icon.png");
+        TreeItem<FileViewElement> result = new TreeItem<>(new FileViewElement(folder), new ImageView(new Image(url.toExternalForm())));
+        File[] files = folder.listFiles();
+        if (files.length > 0) {
+            for (File file:files) {
+                File[] subFiles = file.listFiles();
+                if (subFiles != null && subFiles.length > 0) {
+                    TreeItem<FileViewElement> temp = getItemTreeFolder(file);
+                    result.getChildren().add(temp);
+                } else {
+                    result.getChildren().add(new TreeItem<>(new FileViewElement(file)));
+                }
+            }
+        } 
+        return result;
+    }
+    
+    private void closeFile() {
+        String temp = loadedFileReference.getName();
+        loadedFileReference = null;
+        lastModifiedTime = null;
+        codeArea.clear();
+        statusMessage.setText("File closed: " + temp);
+    }
+    
+    private void setRootTreeView(File selectedFolder) {
+        File[] files = selectedFolder.listFiles();
+        URL url = PrimaryController.class.getResource("folder_icon.png");
+        TreeItem<FileViewElement> rootItem;
+
+        if (files != null) {
+            rootItem = new TreeItem<>(new FileViewElement(selectedFolder), new ImageView(new Image(url.toExternalForm())));
+            for (File file : files) {
+                if (file != null && file.listFiles() != null && file.listFiles().length > 0) {
+                    TreeItem itemFolder = getItemTreeFolder(file);
+                    rootItem.getChildren().add(itemFolder);
+                }
+                else rootItem.getChildren().add(new TreeItem<>(new FileViewElement(file)));
+            }
+        } else rootItem = new TreeItem<>(new FileViewElement(selectedFolder));
+        
+        folderTreeView.setRoot(rootItem);
     }
     
 }

@@ -8,9 +8,10 @@
 <?import org.fxmisc.richtext.*?>
 <?import javafx.scene.text.*?>
 <?import javafx.geometry.*?>
+
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mycompany.simple_cplus_code_editor.controller.PrimaryController">
    <center>
-      <VBox prefHeight="200.0" prefWidth="100.0" BorderPane.alignment="CENTER" alignment="CENTER" >
+      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" BorderPane.alignment="CENTER">
          <children>
              <!-- Remember to change TextArea to CodeArea -->
             <CodeArea fx:id="codeArea" prefHeight="400.0" prefWidth="300.0" />
@@ -28,6 +29,7 @@
           <Menu mnemonicParsing="false" text="File">
             <items>
               <MenuItem mnemonicParsing="false" onAction="#chooseFile" text="Open" />
+                  <MenuItem mnemonicParsing="false" onAction="#openFolder" text="Open Folder" />
                   <MenuItem mnemonicParsing="false" onAction="#saveFile" text="Save" />
                   <MenuItem mnemonicParsing="false" onAction="#closeFile" text="Close" />
             </items>
@@ -42,20 +44,23 @@
       </MenuBar>
    </top>
    <bottom>
-      <HBox style="-fx-padding: 5 5 5 5;" prefHeight="18.0" prefWidth="600.0" BorderPane.alignment="BOTTOM_CENTER">
+      <HBox prefHeight="18.0" prefWidth="600.0" style="-fx-padding: 5 5 5 5;" BorderPane.alignment="BOTTOM_CENTER">
          <children>
-            <HBox prefHeight="18.0" prefWidth="446.0" alignment="CENTER_LEFT" >
+            <HBox alignment="CENTER_LEFT" prefHeight="18.0" prefWidth="446.0">
                <children>
                   <Label fx:id="statusMessage" prefHeight="27.0" prefWidth="236.0" text="Checking for change..." />
                   <ProgressBar fx:id="progressBar" prefWidth="150.0" progress="0.0" />
                </children>
             </HBox>
-            <HBox prefHeight="27.0" prefWidth="175.0" alignment="CENTER_RIGHT">
+            <HBox alignment="CENTER_RIGHT" prefHeight="27.0" prefWidth="175.0">
                 <children>
-                    <Button fx:id="btnLoadChanges" onAction="#loadChanges" mnemonicParsing="false" prefHeight="39.0" prefWidth="203.0" text="Load Change" />
+                    <Button fx:id="btnLoadChanges" mnemonicParsing="false" onAction="#loadChanges" prefHeight="39.0" prefWidth="203.0" text="Load Change" />
                 </children>
             </HBox>
          </children>
       </HBox>
    </bottom>
+   <left>
+      <TreeView fx:id="folderTreeView" onContextMenuRequested="#selectItem" onMouseClicked="#selectItem" prefHeight="312.0" prefWidth="154.0" BorderPane.alignment="CENTER" />
+   </left>
 </BorderPane>

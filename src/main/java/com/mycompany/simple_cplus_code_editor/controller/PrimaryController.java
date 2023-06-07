@@ -78,6 +78,8 @@ public class PrimaryController implements Initializable {
     private CodeArea codeArea;
     private File loadedFileReference = null;
     private FileTime lastModifiedTime = null;
+    private File currentRootFolder = null;
+    private FileTime lastModifiedTimeFolder = null;
     private ExecutorService executor;
     private final Command cmd = new Command();
     private List<TabCodeInfo> listTabInfo = new ArrayList<>();
@@ -134,6 +136,7 @@ public class PrimaryController implements Initializable {
         
         if (selectedFolder != null) {
             setRootTreeView(selectedFolder);
+            scheduleFolderChecking(selectedFolder);
         }
     }
     
@@ -161,37 +164,43 @@ public class PrimaryController implements Initializable {
     }
     
     public void compileProgram(ActionEvent event) {
-        Text prepare = new Text(String.format("Compiling %s....", loadedFileReference.getAbsolutePath()));
-        String outputLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
-        outputConsole.getChildren().add(prepare);
-        try {
-            String result1 = cmd.runCommand("g++.exe");
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-//            InputText
-            Text failedCompiled = new Text("Failed! Please install MINGW or G++ compiler and add to PATH environment!!!\n\n");
-            failedCompiled.setStroke(Paint.valueOf("red"));
-            outputConsole.getChildren().add(failedCompiled);
-            return;
-        }
+        if (loadedFileReference.getName().endsWith(".cpp")) {
+            Text prepare = new Text(String.format("Compiling %s....", loadedFileReference.getAbsolutePath()));
+            String outputLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
+            outputConsole.getChildren().add(prepare);
+            try {
+                String result1 = cmd.runCommand("g++.exe");
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            } catch (IOException ex) {
+    //            InputText
+                Text failedCompiled = new Text("Failed! Please install MINGW or G++ compiler and add to PATH environment!!!\n\n");
+                failedCompiled.setStroke(Paint.valueOf("red"));
+                outputConsole.getChildren().add(failedCompiled);
+                return;
+            }
 
-        String result = null;
-        try {
-            result = cmd.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+            String result = null;
+            try {
+                result = cmd.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         
-        Text success = new Text("Success!!\n\n");
-        success.setStroke(Paint.valueOf("green"));
-        outputConsole.getChildren().add(success);
-        
-        if (result != null) {
-            Text resultFinal = new Text(result);
-            outputConsole.getChildren().add(resultFinal);
+            if (result != null && result.length() > 0) {
+                Text failed = new Text("Failed!!\n\n");
+                failed.setStroke(Paint.valueOf("red"));
+                outputConsole.getChildren().add(failed);
+            
+                Text resultFinal = new Text(result);
+                outputConsole.getChildren().add(resultFinal);
+            } else {
+                Text success = new Text("Success!!\n\n");
+                success.setStroke(Paint.valueOf("green"));
+                outputConsole.getChildren().add(success);
+            }
         }
     }
     
@@ -255,8 +264,10 @@ public class PrimaryController implements Initializable {
                 statusMessage.setText("File loaded: " + fileToLoad.getName());
                 loadedFileReference = fileToLoad;
                 lastModifiedTime = Files.readAttributes(fileToLoad.toPath(), BasicFileAttributes.class).lastModifiedTime();
-                if (isResetTreeView)
+                if (isResetTreeView){
                     setRootTreeView(loadedFileReference);
+                    scheduleFolderChecking(loadedFileReference);
+                }
             } catch (InterruptedException | ExecutionException | IOException e) {
 
             }
@@ -396,6 +407,25 @@ public class PrimaryController implements Initializable {
         return result;
     }
     
+    private List<File> getAllFiles(File folder) {
+        ArrayList<File> result = new ArrayList<File>();
+        File[] files = folder.listFiles();
+        if (files.length > 0) {
+            for (File file:files) {
+                if (!file.getName().endsWith(".exe")) {
+                    File[] subFiles = file.listFiles();
+                    if (subFiles != null && subFiles.length > 0) {
+                        List<File> temp = getAllFiles(file);
+                        result.addAll(temp);
+                    } else {
+                        result.add(file);
+                    }
+                }
+            }
+        } 
+        return result;
+    }
+    
     private void closeFile() {
         String temp = loadedFileReference.getName();
         loadedFileReference = null;
@@ -428,7 +458,14 @@ public class PrimaryController implements Initializable {
             }
         } else rootItem = new TreeItem<>(new FileViewElement(selectedFolder));
         
+        currentRootFolder = selectedFolder;
+        try {
+            this.lastModifiedTime = Files.readAttributes(selectedFolder.toPath(), BasicFileAttributes.class).lastModifiedTime();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
         folderTreeView.setRoot(rootItem);
+        rootItem.setExpanded(true);
     }
     
     private void openNewTab(String tabName, File file) {
@@ -484,6 +521,51 @@ public class PrimaryController implements Initializable {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+    
+    private void scheduleFolderChecking(File file) {
+        ScheduledService<Boolean> fileChangeCheckingService = createFolderChangesCheckingService(file);
+        fileChangeCheckingService.setOnSucceeded(workerStateEvent -> {
+            if (fileChangeCheckingService.getLastValue() == null) return;
+            if (fileChangeCheckingService.getLastValue()) {
+                //no need to keep checking
+//                fileChangeCheckingService.cancel();
+                List<File> files = getAllFiles(file);
+                for (TabCodeInfo info : listTabInfo) {
+                    boolean isFound = false;
+                    for (File f : files) {
+                        if (info.getFile().getAbsolutePath().equals(f.getAbsolutePath())) {
+                            isFound = true;
+                        }
+                    }
+                    if (!isFound) {
+                        listTabInfo.remove(info);
+                        tabCodeContainer.getTabs().remove(info.getTab());
+                        changeTab(info);
+                    }
+                }
+                setRootTreeView(file);
+            }
+        });
+        System.out.println("Starting Checking Service...");
+        fileChangeCheckingService.start();
+    }
+        
+    private ScheduledService<Boolean> createFolderChangesCheckingService(File file) {
+        ScheduledService<Boolean> scheduledService = new ScheduledService<>() {
+            @Override
+            protected Task<Boolean> createTask() {
+                return new Task<>() {
+                    @Override
+                    protected Boolean call() throws Exception {
+                        FileTime lastModifiedAsOfNow = Files.readAttributes(file.toPath(), BasicFileAttributes.class).lastModifiedTime();
+                        return lastModifiedAsOfNow.compareTo(lastModifiedTime) > 0;
+                    }
+                };
+            }
+        };
+        scheduledService.setPeriod(javafx.util.Duration.seconds(1));
+        return scheduledService;
     }
     
 }

@@ -84,6 +84,7 @@ public class PrimaryController implements Initializable {
     private final Command cmd = new Command();
     private List<TabCodeInfo> listTabInfo = new ArrayList<>();
     private TabCodeInfo currentTab = null;
+    private ScheduledService<Boolean> folderCheckingService = null;
     /**
      * Initializes the controller class.
      * @param url
@@ -133,10 +134,17 @@ public class PrimaryController implements Initializable {
         loadedFileReference = null;
         lastModifiedTime = null;
         codeArea = null;
+        outputConsole.getChildren().clear();
         
         if (selectedFolder != null) {
             setRootTreeView(selectedFolder);
-            scheduleFolderChecking(selectedFolder);
+            
+            if (folderCheckingService != null) {
+                folderCheckingService.cancel();
+                folderCheckingService = null;
+            }
+            
+            folderCheckingService = scheduleFolderChecking(selectedFolder);
         }
     }
     
@@ -264,9 +272,16 @@ public class PrimaryController implements Initializable {
                 statusMessage.setText("File loaded: " + fileToLoad.getName());
                 loadedFileReference = fileToLoad;
                 lastModifiedTime = Files.readAttributes(fileToLoad.toPath(), BasicFileAttributes.class).lastModifiedTime();
+                outputConsole.getChildren().clear();
                 if (isResetTreeView){
                     setRootTreeView(loadedFileReference);
-                    scheduleFolderChecking(loadedFileReference);
+                    
+                    if (folderCheckingService != null && !fileToLoad.getAbsolutePath().contains(currentRootFolder.getAbsolutePath())) {
+                        folderCheckingService.cancel();
+                        folderCheckingService = null;
+                    }
+                    
+                    folderCheckingService = scheduleFolderChecking(loadedFileReference);
                 }
             } catch (InterruptedException | ExecutionException | IOException e) {
 
@@ -319,7 +334,7 @@ public class PrimaryController implements Initializable {
     }
     
     private void notifyUserOfChanges() {
-        btnLoadChanges.setVisible(true);
+//        btnLoadChanges.setVisible(true);
     }
     
     public int saveFile(ActionEvent e) {
@@ -444,8 +459,8 @@ public class PrimaryController implements Initializable {
         if (files != null) {
             rootItem = new TreeItem<>(new FileViewElement(selectedFolder), new ImageView(new Image(url.toExternalForm())));
             for (File file : files) {
-                if (!file.getName().endsWith(".exe")) {
-                    if (file != null && file.listFiles() != null && file.listFiles().length > 0) {
+                if (file != null && !file.getName().endsWith(".exe")) {
+                    if (file.isDirectory()) {
                         TreeItem itemFolder = getItemTreeFolder(file);
                         rootItem.getChildren().add(itemFolder);
                     }
@@ -456,7 +471,12 @@ public class PrimaryController implements Initializable {
                     }
                 }
             }
-        } else rootItem = new TreeItem<>(new FileViewElement(selectedFolder));
+        } else {
+            
+            if (selectedFolder.getName().endsWith(".cpp"))
+                            rootItem = new TreeItem<>(new FileViewElement(selectedFolder), new ImageView(url_cplus.toExternalForm()));
+                        else rootItem = new TreeItem<>(new FileViewElement(selectedFolder));
+        }
         
         currentRootFolder = selectedFolder;
         try {
@@ -523,9 +543,11 @@ public class PrimaryController implements Initializable {
         }
     }
     
-    private void scheduleFolderChecking(File file) {
+    private ScheduledService<Boolean> scheduleFolderChecking(File file) {
         ScheduledService<Boolean> fileChangeCheckingService = createFolderChangesCheckingService(file);
         fileChangeCheckingService.setOnSucceeded(workerStateEvent -> {
+            boolean isUpdated = false;
+            if (listTabInfo.isEmpty()) isUpdated = true;
             if (fileChangeCheckingService.getLastValue() == null) return;
             if (fileChangeCheckingService.getLastValue()) {
                 //no need to keep checking
@@ -542,13 +564,24 @@ public class PrimaryController implements Initializable {
                         listTabInfo.remove(info);
                         tabCodeContainer.getTabs().remove(info.getTab());
                         changeTab(info);
+                        isUpdated=true;
                     }
                 }
-                setRootTreeView(file);
+                if (isUpdated) {
+                    setRootTreeView(file);
+                    
+                    if (folderCheckingService != null) {
+                        folderCheckingService.cancel();
+                        folderCheckingService = null;
+                    }
+            
+                    folderCheckingService = scheduleFolderChecking(file);
+                }
             }
         });
         System.out.println("Starting Checking Service...");
         fileChangeCheckingService.start();
+        return fileChangeCheckingService;
     }
         
     private ScheduledService<Boolean> createFolderChangesCheckingService(File file) {

@@ -12,7 +12,7 @@ import java.io.InputStreamReader;
  */
 public class Command {
     
-    public String runCommand(String... command) throws InterruptedException, IOException {
+    public static String runCommand(String... command) throws InterruptedException, IOException {
     
         var processBuilder = new ProcessBuilder().command(command); 
             processBuilder.redirectErrorStream(true);

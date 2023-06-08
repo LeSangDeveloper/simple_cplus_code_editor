@@ -81,7 +81,6 @@ public class PrimaryController implements Initializable {
     private File currentRootFolder = null;
     private FileTime lastModifiedTimeFolder = null;
     private ExecutorService executor;
-    private final Command cmd = new Command();
     private List<TabCodeInfo> listTabInfo = new ArrayList<>();
     private TabCodeInfo currentTab = null;
     private ScheduledService<Boolean> folderCheckingService = null;
@@ -172,12 +171,12 @@ public class PrimaryController implements Initializable {
     }
     
     public void compileProgram(ActionEvent event) {
-        if (loadedFileReference.getName().endsWith(".cpp")) {
+        if (loadedFileReference != null && loadedFileReference.getName().endsWith(".cpp")) {
             Text prepare = new Text(String.format("Compiling %s....", loadedFileReference.getAbsolutePath()));
             String outputLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
             outputConsole.getChildren().add(prepare);
             try {
-                String result1 = cmd.runCommand("g++.exe");
+                String result1 = Command.runCommand("g++.exe");
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
@@ -190,7 +189,7 @@ public class PrimaryController implements Initializable {
 
             String result = null;
             try {
-                result = cmd.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
+                result = Command.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
@@ -219,15 +218,17 @@ public class PrimaryController implements Initializable {
     }
     
     public void runProgram(ActionEvent e) {
-        String fileLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
+        if (loadedFileReference!= null && loadedFileReference.getAbsolutePath().endsWith(".cpp")){
+            String fileLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
             Runtime runTime = Runtime.getRuntime();
 
             String executablePath = "cmd /c start \"\" " + fileLocation + " & pause";
 
-        try {
-            Process process = runTime.exec(executablePath);
-        } catch (IOException ex) {
-        }
+            try {
+                Process process = runTime.exec(executablePath);
+            } catch (IOException ex) {
+            }
+       }
     }
     
     private void loadFileToTextArea(File fileToLoad, boolean isResetTreeView, boolean isOpenNewTab) {
@@ -304,7 +305,6 @@ public class PrimaryController implements Initializable {
             if (fileChangeCheckingService.getLastValue()) {
                 //no need to keep checking
                 fileChangeCheckingService.cancel();
-                notifyUserOfChanges();
             }
         });
         System.out.println("Starting Checking Service...");
@@ -331,10 +331,6 @@ public class PrimaryController implements Initializable {
     public void loadChanges(ActionEvent event) {
         loadFileToTextArea(loadedFileReference, false, false);
         btnLoadChanges.setVisible(false);
-    }
-    
-    private void notifyUserOfChanges() {
-//        btnLoadChanges.setVisible(true);
     }
     
     public int saveFile(ActionEvent e) {

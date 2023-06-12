@@ -492,15 +492,15 @@ public class PrimaryController implements Initializable {
     
     private void openNewTab(String tabName, File file) {
         // TODO remove after test
-        CodeArea codeArea2 = createCodeArea(file);
+        CodeArea newCodeArea = createCodeArea(file);
         
-        Tab tab1 = new Tab(tabName, codeArea2);
-        tabCodeContainer.getTabs().add(tab1);
-        tab1.setOnSelectionChanged (e -> 
+        Tab newTab = new Tab(tabName, newCodeArea);
+        tabCodeContainer.getTabs().add(newTab);
+        newTab.setOnSelectionChanged (e -> 
         {
-            if (tab1.isSelected()) {
+            if (newTab.isSelected()) {
                 for(TabCodeInfo info : listTabInfo) {
-                    if (tab1.equals(info.getTab())) {
+                    if (newTab.equals(info.getTab())) {
                         changeTab(info);
                     }
                 }
@@ -508,26 +508,26 @@ public class PrimaryController implements Initializable {
         }
         );
         
-        TabCodeInfo info = new TabCodeInfo(tab1, file, codeArea2);
+        TabCodeInfo info = new TabCodeInfo(newTab, file, newCodeArea);
         listTabInfo.add(info);
                 
-        this.codeArea = codeArea2;
+        this.codeArea = newCodeArea;
         this.currentTab = info;
-        tabCodeContainer.getSelectionModel().select(tab1);
+        tabCodeContainer.getSelectionModel().select(newTab);
     }
     
     private CodeArea createCodeArea(File file) {
-        CodeArea codeArea2 = new CodeArea();
+        CodeArea codeArea = new CodeArea();
         
-        codeArea2.setParagraphGraphicFactory(LineNumberFactory.get(codeArea2));
-        codeArea2.setContextMenu( new ContextMenu() );
+        codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
+        codeArea.setContextMenu( new ContextMenu() );
         
         if (file.getName().endsWith(".cpp")) {
-            Subscription sub = codeArea2.multiPlainChanges()
+            Subscription sub = codeArea.multiPlainChanges()
                 .successionEnds(Duration.ofMillis(500))
                 .retainLatestUntilLater(executor)
                 .supplyTask(this::computeHighlightingAsync)
-                .awaitLatest(codeArea2.multiPlainChanges())
+                .awaitLatest(codeArea.multiPlainChanges())
                 .filterMap(t -> {
                     if(t.isSuccess()) {
                         return Optional.of(t.get());
@@ -538,7 +538,7 @@ public class PrimaryController implements Initializable {
                 .subscribe(this::applyHighlighting);
         }
         
-        return codeArea2;
+        return codeArea;
     }
     
     private void changeTab(TabCodeInfo info) {

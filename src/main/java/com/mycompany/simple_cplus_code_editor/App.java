@@ -25,7 +25,7 @@ public class App extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader primaryFXML = loadFXML("primary");
         scene = new Scene(primaryFXML.load(), 640, 480);
-        scene.getStylesheets().add(App.class.getResource("java-keywords.css").toExternalForm());
+        scene.getStylesheets().add(App.class.getResource("cplus-keywords.css").toExternalForm());
         
         PrimaryController primaryController = primaryFXML.getController();
         scene.addEventFilter(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {

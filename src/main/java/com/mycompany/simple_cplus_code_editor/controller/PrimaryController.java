@@ -492,7 +492,8 @@ public class PrimaryController implements Initializable {
     
     private void openNewTab(String tabName, File file) {
         // TODO remove after test
-        CodeArea codeArea2 = new CodeArea();
+        CodeArea codeArea2 = createCodeArea(file);
+        
         Tab tab1 = new Tab(tabName, codeArea2);
         tabCodeContainer.getTabs().add(tab1);
         tab1.setOnSelectionChanged (e -> 
@@ -509,6 +510,14 @@ public class PrimaryController implements Initializable {
         
         TabCodeInfo info = new TabCodeInfo(tab1, file, codeArea2);
         listTabInfo.add(info);
+                
+        this.codeArea = codeArea2;
+        this.currentTab = info;
+        tabCodeContainer.getSelectionModel().select(tab1);
+    }
+    
+    private CodeArea createCodeArea(File file) {
+        CodeArea codeArea2 = new CodeArea();
         
         codeArea2.setParagraphGraphicFactory(LineNumberFactory.get(codeArea2));
         codeArea2.setContextMenu( new ContextMenu() );
@@ -527,10 +536,9 @@ public class PrimaryController implements Initializable {
                     }
                 })
                 .subscribe(this::applyHighlighting);
-        }        
-        this.codeArea = codeArea2;
-        this.currentTab = info;
-        tabCodeContainer.getSelectionModel().select(tab1);
+        }
+        
+        return codeArea2;
     }
     
     private void changeTab(TabCodeInfo info) {

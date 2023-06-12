@@ -41,7 +41,7 @@ public class App extends Application {
         });
         
         stage.setScene(scene);
-        stage.setTitle("Simple C++ Editor");
+        stage.setTitle("Simple C++ Code Editor");
         stage.getIcons().add(new Image(App.class.getResource("app_icon.png").toExternalForm()));
         stage.show();
     }

@@ -10,7 +10,7 @@ import java.io.InputStreamReader;
  *
  * @author lesan
  */
-public class Command {
+public class CommandUtil {
     
     public static String runCommand(String... command) throws InterruptedException, IOException {
     

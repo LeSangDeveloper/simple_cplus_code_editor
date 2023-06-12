@@ -6,7 +6,7 @@ package com.mycompany.simple_cplus_code_editor.controller;
 
 import com.mycompany.simple_cplus_code_editor.model.FileViewElement;
 import com.mycompany.simple_cplus_code_editor.model.TabCodeInfo;
-import com.mycompany.simple_cplus_code_editor.util.Command;
+import com.mycompany.simple_cplus_code_editor.util.CommandUtil;
 import com.mycompany.simple_cplus_code_editor.util.Utils;
 import java.io.BufferedReader;
 import java.io.File;
@@ -182,7 +182,7 @@ public class PrimaryController implements Initializable {
             String outputLocation = loadedFileReference.getAbsolutePath().replace(".cpp", ".exe");
             outputConsole.getChildren().add(prepare);
             try {
-                String result1 = Command.runCommand("g++.exe");
+                String result1 = CommandUtil.runCommand("g++.exe");
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
@@ -195,7 +195,7 @@ public class PrimaryController implements Initializable {
 
             String result = null;
             try {
-                result = Command.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
+                result = CommandUtil.runCommand("g++.exe", loadedFileReference.getAbsolutePath(), "-o", outputLocation);
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {

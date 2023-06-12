@@ -37,10 +37,11 @@
         <menus>
           <Menu mnemonicParsing="false" text="File">
             <items>
-              <MenuItem mnemonicParsing="false" onAction="#chooseFile" text="Open" />
-                  <MenuItem mnemonicParsing="false" onAction="#openFolder" text="Open Folder" />
-                  <MenuItem mnemonicParsing="false" onAction="#saveFile" text="Save" />
-                  <MenuItem mnemonicParsing="false" onAction="#closeFile" text="Close" />
+                <MenuItem mnemonicParsing="false" onAction="#chooseFile" text="Open" />
+                <MenuItem mnemonicParsing="false" onAction="#openFolder" text="Open Folder" />
+                <MenuItem mnemonicParsing="false" onAction="#reload" text="Reload" />
+                <MenuItem mnemonicParsing="false" onAction="#saveFile" text="Save" />
+                <MenuItem mnemonicParsing="false" onAction="#closeFile" text="Close" />
             </items>
           </Menu>
           <Menu mnemonicParsing="false" text="Program">

@@ -147,6 +147,12 @@ public class PrimaryController implements Initializable {
         }
     }
     
+    public void reload(ActionEvent event) { 
+        if (loadedFileReference != null) {
+            setRootTreeView(loadedFileReference);
+        }
+    }
+    
     public void selectItem() {
         TreeItem<FileViewElement> item = (TreeItem<FileViewElement>) folderTreeView.getSelectionModel().getSelectedItem();
 

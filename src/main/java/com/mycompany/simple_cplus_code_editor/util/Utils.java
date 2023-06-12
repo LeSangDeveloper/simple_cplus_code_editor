@@ -55,18 +55,5 @@ public class Utils {
             + "|(?<STRING>" + STRING_PATTERN + ")"
             + "|(?<COMMENT>" + COMMENT_PATTERN + ")"
     );
-
-    public static final String sampleCode = String.join("\n", new String[] {
-            "#include<iostream>",
-            "",
-            "using namespace std;",
-            "",
-            "int main() {",
-            "       cout << \"Hello word\";",
-            "       return 1",
-            "    }",
-            "",
-            "}"
-    });
     
 }
